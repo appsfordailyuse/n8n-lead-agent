@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Contact Us — AI Lead Agent</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 20px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 32px 64px rgba(0,0,0,0.4);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(99,102,241,0.2);
+      border: 1px solid rgba(99,102,241,0.4);
+      color: #a5b4fc;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 100px;
+      margin-bottom: 20px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .badge::before { content: '⚡'; }
+
+    h1 {
+      color: #fff;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.5);
+      font-size: 14px;
+      margin-bottom: 36px;
+      line-height: 1.6;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    input, textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      padding: 12px 14px;
+      transition: all 0.2s;
+      outline: none;
+      font-family: inherit;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: rgba(255,255,255,0.25);
+    }
+
+    input:focus, textarea:focus {
+      border-color: rgba(99,102,241,0.6);
+      background: rgba(99,102,241,0.08);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    button {
+      width: 100%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+    }
+
+    button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .success {
+      display: none;
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    .success-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+
+    .success h2 {
+      color: #fff;
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .success p {
+      color: rgba(255,255,255,0.5);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .score-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 14px;
+      border-radius: 100px;
+      margin-top: 12px;
+    }
+
+    .error-msg {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-top: 12px;
+      display: none;
+    }
+
+    /* Config notice */
+    .config-notice {
+      background: rgba(251,191,36,0.1);
+      border: 1px solid rgba(251,191,36,0.3);
+      color: #fde68a;
+      font-size: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <!-- Config warning (shows if webhook URL not set) -->
+    <div class="config-notice" id="configNotice">
+      ⚙️ <strong>Setup needed:</strong> Open this file and set your Railway n8n URL in the <code>WEBHOOK_URL</code> variable below.
+    </div>
+
+    <!-- Form -->
+    <div id="formSection">
+      <div class="badge">AI Powered</div>
+      <h1>Let's Talk Business 🚀</h1>
+      <p class="subtitle">Fill in your details and our AI will respond to you within seconds.</p>
+
+      <form id="leadForm">
+        <div class="row">
+          <div class="field">
+            <label>Full Name *</label>
+            <input type="text" name="name" placeholder="Ahmed Khan" required />
+          </div>
+          <div class="field">
+            <label>Email *</label>
+            <input type="email" name="email" placeholder="ahmed@company.com" required />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Company</label>
+            <input type="text" name="company" placeholder="TechStart Inc." />
+          </div>
+          <div class="field">
+            <label>Phone</label>
+            <input type="text" name="phone" placeholder="+92-300-0000000" />
+          </div>
+        </div>
+        <div class="field">
+          <label>How can we help? *</label>
+          <textarea name="message" placeholder="Tell us about your project or what you're looking for..." required></textarea>
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+
+        <button type="submit" id="submitBtn">
+          Send Message ✨
+        </button>
+      </form>
+    </div>
+
+    <!-- Success State -->
+    <div class="success" id="successSection">
+      <div class="success-icon">🎉</div>
+      <h2>Message Received!</h2>
+      <p>Thank you! We've sent a personalized reply to your email. Our team has also been notified.</p>
+      <div class="score-badge" id="scoreBadge"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // ============================================================
+    // ⚙️  CONFIGURE YOUR WEBHOOK URL HERE
+    // After deploying to Railway, replace this with your n8n URL:
+    // Example: https://your-app.railway.app/webhook/new-lead
+    // ============================================================
+    const WEBHOOK_URL = 'YOUR_RAILWAY_N8N_URL/webhook/new-lead';
+    // ============================================================
+
+    // Show config notice if URL not set
+    if (WEBHOOK_URL.includes('YOUR_RAILWAY')) {
+      document.getElementById('configNotice').style.display = 'block';
+    }
+
+    document.getElementById('leadForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById('submitBtn');
+      const errorMsg = document.getElementById('errorMsg');
+      errorMsg.style.display = 'none';
+
+      if (WEBHOOK_URL.includes('YOUR_RAILWAY')) {
+        errorMsg.textContent = '⚠️ Webhook URL not configured. Please set WEBHOOK_URL in the HTML file.';
+        errorMsg.style.display = 'block';
+        return;
+      }
+
+      // Get form data
+      const data = {
+        name: this.name.value.trim(),
+        email: this.email.value.trim(),
+        company: this.company.value.trim() || 'Not provided',
+        phone: this.phone.value.trim() || 'Not provided',
+        message: this.message.value.trim()
+      };
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Sending...';
+
+      try {
+        const res = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+          document.getElementById('formSection').style.display = 'none';
+          document.getElementById('successSection').style.display = 'block';
+          if (result.score) {
+            document.getElementById('scoreBadge').textContent = `🤖 AI Lead Score: ${result.score}/10`;
+          }
+        } else {
+          throw new Error(result.message || 'Something went wrong');
+        }
+      } catch (err) {
+        errorMsg.textContent = '❌ ' + (err.message || 'Failed to send. Please try again.');
+        errorMsg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Send Message ✨';
+      }
+    });
+  </script>
+</body>
+</html>
