@@ -1,0 +1,15 @@
+{
+  "name": "n8n-ai-lead-agent",
+  "version": "1.0.0",
+  "description": "AI Lead Generation Agent powered by n8n - Auto email, CRM save, Slack notify",
+  "scripts": {
+    "start": "n8n start",
+    "postinstall": "node scripts/import-workflow.js"
+  },
+  "dependencies": {
+    "n8n": "latest"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
