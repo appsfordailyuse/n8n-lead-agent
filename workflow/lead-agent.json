@@ -1,0 +1,225 @@
+{
+  "name": "AI Lead Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-lead",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "ai-lead-agent-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body || $input.first().json;\nconst name = (b.name || '').trim();\nconst email = (b.email || '').trim();\nconst company = (b.company || 'Not provided').trim();\nconst message = (b.message || '').trim();\nconst phone = (b.phone || 'Not provided').trim();\n\nif (!email || !name) throw new Error('Name and Email are required');\n\nreturn [{ json: {\n  name, email, company, message, phone,\n  lead_id: 'LEAD-' + Date.now(),\n  received_at: new Date().toISOString()\n}}];"
+      },
+      "id": "node-validate",
+      "name": "Validate Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 350,
+          "temperature": 0.7,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a professional sales assistant. Write short, warm, personalized follow-up emails (under 120 words). Never use placeholders. Sign off as 'The Team'."
+            },
+            {
+              "role": "user",
+              "content": "=Write a follow-up email for:\nName: {{ $json.name }}\nCompany: {{ $json.company }}\nMessage: {{ $json.message }}\n\nReturn ONLY the email body, no subject line."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-openai-email",
+      "name": "AI Write Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 120,
+          "temperature": 0.2,
+          "messages": [
+            {
+              "role": "system",
+              "content": "Score leads 1-10. Return ONLY valid JSON: {\"score\":8,\"category\":\"Hot\",\"priority\":\"High\",\"reason\":\"clear intent\"}"
+            },
+            {
+              "role": "user",
+              "content": "=Score this lead:\nName: {{ $json.name }}\nCompany: {{ $json.company }}\nMessage: {{ $json.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-openai-score",
+      "name": "AI Score Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $('Validate Lead').first().json;\nconst emailResp = $('AI Write Email').first().json;\nconst scoreResp = $('AI Score Lead').first().json;\n\nconst emailBody = emailResp.choices?.[0]?.message?.content || 'Thank you for reaching out! We will contact you soon.';\n\nlet score = { score: 5, category: 'Warm', priority: 'Medium', reason: 'Standard lead' };\ntry {\n  const raw = scoreResp.choices?.[0]?.message?.content || '{}';\n  const clean = raw.replace(/```json|```/g, '').trim();\n  score = { ...score, ...JSON.parse(clean) };\n} catch(e) {}\n\nreturn [{ json: { ...lead, email_body: emailBody, ...score } }];"
+      },
+      "id": "node-merge",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Thanks for reaching out, {{ $json.name }}!",
+        "emailType": "text",
+        "message": "={{ $json.email_body }}",
+        "options": {}
+      },
+      "id": "node-gmail",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1080, 160],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-cred",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "text": "=🔥 *New Lead!*\n\n👤 *{{ $json.name }}* | 🏢 {{ $json.company }}\n📧 {{ $json.email }} | 📱 {{ $json.phone }}\n\n💬 _{{ $json.message }}_\n\n🤖 Score: *{{ $json.score }}/10* | {{ $json.category }} | {{ $json.priority }} Priority\n📝 {{ $json.reason }}\n\n✅ Follow-up email sent automatically!"
+        },
+        "options": {}
+      },
+      "id": "node-slack",
+      "name": "Slack Notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.airtable.com/v0/{{ $env.AIRTABLE_BASE_ID }}/Leads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "records": [
+            {
+              "fields": {
+                "Lead ID": "={{ $json.lead_id }}",
+                "Name": "={{ $json.name }}",
+                "Email": "={{ $json.email }}",
+                "Company": "={{ $json.company }}",
+                "Phone": "={{ $json.phone }}",
+                "Message": "={{ $json.message }}",
+                "AI Score": "={{ $json.score }}",
+                "Category": "={{ $json.category }}",
+                "Priority": "={{ $json.priority }}",
+                "Reason": "={{ $json.reason }}",
+                "Created At": "={{ $json.received_at }}"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-airtable",
+      "name": "Save to Airtable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 440]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, lead_id: $('Merge Results').first().json.lead_id, score: $('Merge Results').first().json.score, message: 'Lead received! Check your email.' }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
+      },
+      "id": "node-respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Validate Lead", "type": "main", "index": 0 }]]
+    },
+    "Validate Lead": {
+      "main": [[
+        { "node": "AI Write Email", "type": "main", "index": 0 },
+        { "node": "AI Score Lead", "type": "main", "index": 0 }
+      ]]
+    },
+    "AI Write Email": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "AI Score Lead": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Merge Results": {
+      "main": [[
+        { "node": "Send Email", "type": "main", "index": 0 },
+        { "node": "Slack Notify", "type": "main", "index": 0 },
+        { "node": "Save to Airtable", "type": "main", "index": 0 }
+      ]]
+    },
+    "Send Email": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": ["lead-agent", "ai", "2026"]
+}
